@@ -5,32 +5,73 @@ from django.shortcuts import render,redirect
 from django.http import HttpResponse
 from .models import MarketData  # Model danych rynkowych
 from datetime import datetime
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
+import base64
+from io import BytesIO
+from django.shortcuts import render
+from django.utils import timezone
+from collections import Counter
 
 def home_view(request):
-    weather = None
-    if request.method == 'POST' and 'city' in request.POST:
-        city = request.POST.get('city')
-        api_key = '1c6b720a7a30c794eb6d83ecc05f877c'
-        url = f'http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric'
-        response = requests.get(url)
-        data = response.json()
-        if response.status_code == 200:
-            weather = {
-                'city': data['name'],
-                'temperature': data['main']['temp'],
-                'description': data['weather'][0]['description'],
-                'icon': data['weather'][0]['icon'],
-            }
+    if request.method == 'POST':
+        session = request.POST['session']
+        pair = request.POST['pair']
+        buy_sell = request.POST['buy_sell']
+        time_frame = request.POST['time_frame']
+        win_lose = request.POST['win_lose']
+        lot_size = request.POST['lot_size']
+        closed_pips = request.POST['closed_pips']
+        
+        # Tworzenie nowego wpisu
+        MarketData.objects.create(
+            session=session,
+            pair=pair,
+            buy_sell=buy_sell,
+            time_frame=time_frame,
+            win_lose=win_lose,
+            lot_size=lot_size,
+            closed_pips=closed_pips,
+        )
+        
+        # Przekierowanie po dodaniu wpisu
+        return redirect('home')
 
+    # Zbieranie danych do wykresu
+    entries = MarketData.objects.all()
+    results = [entry.win_lose for entry in entries]
+    count_results = Counter(results)
+    
+    # Przygotowanie danych do wykresu
+    labels = count_results.keys()
+    values = count_results.values()
+
+    # Tworzenie wykresu
+    plt.figure(figsize=(10, 5))
+    plt.bar(labels, values, color=['green', 'red'])
+    plt.title('Ilość wygranych i przegranych')
+    plt.xlabel('Wynik')
+    plt.ylabel('Ilość')
+
+    # Zapisz wykres do bufora
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+
+    # Konwertowanie wykresu do base64
+    image_png = base64.b64encode(buf.getvalue()).decode('utf-8')
     market_data = MarketData.objects.all()
+    return render(request, 'home.html', {'entries': entries, 'chart': image_png,'market_data': market_data})
 
-    return render(request, 'home.html', {'weather': weather, 'market_data': market_data})
+
 
 
 def add_market_data(request):
     if request.method == 'POST':
         date = request.POST.get('date')
-        time = request.POST.get('time')
         session = request.POST.get('session')
         pair = request.POST.get('pair')
         buy_sell = request.POST.get('buy_sell')
@@ -42,7 +83,6 @@ def add_market_data(request):
         # Dodanie danych do bazy
         MarketData.objects.create(
             date=date,
-            time=time,
             session=session,
             pair=pair,
             buy_sell=buy_sell,
