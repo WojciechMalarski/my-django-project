@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strona Główna</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .nav-buttons {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .nav-buttons button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .nav-buttons button:hover {
+            background-color: #45a049;
+        }
+        .section {
+            display: none;
+            margin: 20px 0;
+        }
+        .section.active {
+            display: block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Strona Główna</h1>
+
+<div class="nav-buttons">
+    <button onclick="showSection('weather')">Pogoda</button>
+    <button onclick="showSection('dataEntry')">Wprowadź Dane</button>
+    <button onclick="showSection('viewData')">Przeglądaj Dane</button>
+</div>
+
+<!-- Sekcja z pogodą -->
+<div id="weather" class="section">
+    <h2>Aktualna Pogoda</h2>
+    <!-- Wyświetlanie danych pogodowych za pomocą API -->
+    <p>Temperatura: {{ weather.temperature }}°C</p>
+    <p>Wilgotność: {{ weather.humidity }}%</p>
+    <p>Warunki: {{ weather.condition }}</p>
+</div>
+
+<!-- Sekcja wprowadzania danych -->
+<div id="dataEntry" class="section">
+    <h2>Wprowadź dane rynkowe</h2>
+    <form method="post" action="{% url 'add_market_data' %}">
+        {% csrf_token %}
+        <table>
+            <tr>
+                <td><label for="date">Date:</label></td>
+                <td><input type="date" name="date" required></td>
+            </tr>
+            <tr>
+                <td><label for="time">Time:</label></td>
+                <td><input type="time" name="time" required></td>
+            </tr>
+            <tr>
+                <td><label for="session">Session:</label></td>
+                <td><input type="text" name="session" placeholder="Session" required></td>
+            </tr>
+            <tr>
+                <td><label for="pair">Pair:</label></td>
+                <td><input type="text" name="pair" placeholder="Pair" required></td>
+            </tr>
+            <tr>
+                <td><label for="buy_sell">Buy/Sell:</label></td>
+                <td>
+                    <select name="buy_sell" required>
+                        <option value="Buy">Buy</option>
+                        <option value="Sell">Sell</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td><label for="time_frame">Time Frame:</label></td>
+                <td><input type="text" name="time_frame" placeholder="Time Frame" required></td>
+            </tr>
+            <tr>
+                <td><label for="win_lose">Win/Lose:</label></td>
+                <td><input type="text" name="win_lose" placeholder="Win/Lose" required></td>
+            </tr>
+            <tr>
+                <td><label for="lot_size">Lot Size:</label></td>
+                <td>
+                    <select name="lot_size" required>
+                        <option value="0.5">Half</option>
+                        <option value="1.0">Full</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td><label for="closed_pips">Closed Pips:</label></td>
+                <td><input type="number" name="closed_pips" placeholder="Closed Pips" required></td>
+            </tr>
+        </table>
+        <button type="submit" class="button">Dodaj dane</button>
+    </form>
+</div>
+
+<!-- Sekcja przeglądu danych -->
+<div id="viewData" class="section">
+    <h2>Wprowadzone dane rynkowe</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Session</th>
+                <th>Pair</th>
+                <th>Buy/Sell</th>
+                <th>Time Frame</th>
+                <th>Win/Lose</th>
+                <th>Lot Size</th>
+                <th>Closed Pips</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for data in market_data %}
+            <tr>
+                <td>{{ data.date }}</td>
+                <td>{{ data.time }}</td>
+                <td>{{ data.session }}</td>
+                <td>{{ data.pair }}</td>
+                <td>{{ data.buy_sell }}</td>
+                <td>{{ data.time_frame }}</td>
+                <td>{{ data.win_lose }}</td>
+                <td>{{ data.lot_size }}</td>
+                <td>{{ data.closed_pips }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9">Brak danych do wyświetlenia.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{% url 'export_to_csv' %}" class="button">Eksportuj do CSV</a>
+</div>
+
+<script>
+function showSection(sectionId) {
+    document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+    });
+    document.getElementById(sectionId).classList.add('active');
+}
+</script>
+
+</body>
+</html>
