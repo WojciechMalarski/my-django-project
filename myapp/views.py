@@ -14,6 +14,8 @@ from io import BytesIO
 from django.shortcuts import render
 from django.utils import timezone
 from collections import Counter
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
 def home_view(request):
     if request.method == 'POST':
@@ -95,12 +97,60 @@ def add_market_data(request):
         # Przekierowanie do widoku przeglądu danych po dodaniu nowego wpisu
         return redirect('home')  # Przekierowuje do strony głównej, gdzie wyświetlane są dane rynkowe
 
-def export_to_csv(request):
+def export_to_excel(request):
+    # Pobranie danych rynkowych z bazy danych
     market_data = MarketData.objects.all().values(
-        'date', 'time', 'session', 'pair', 'buy_sell', 'time_frame', 'win_lose', 'lot_size', 'closed_pips'
+        'date', 'session', 'pair', 'buy_sell', 'time_frame', 'win_lose', 'lot_size', 'closed_pips'
     )
-    df = pd.DataFrame(market_data)
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="market_data.csv"'
-    df.to_csv(response, index=False)
+
+    # Tworzenie nowego skoroszytu Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Market Data"
+
+    # Nagłówki kolumn
+    headers = ['Date', 'Time', 'Session', 'Pair', 'Buy/Sell', 'Time Frame', 'Win/Lose', 'Lot Size', 'Closed Pips']
+    ws.append(headers)
+
+    # Formatowanie nagłówków
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="4CAF50", end_color="4CAF50", fill_type="solid")
+    alignment_center = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+
+    for col in ws.iter_cols(min_row=1, max_row=1, min_col=1, max_col=len(headers)):
+        for cell in col:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = alignment_center
+            cell.border = thin_border
+
+    # Dodawanie danych i formatowanie wierszy
+    for data in market_data:
+        date = data['date'].strftime('%Y-%m-%d')
+        time = data['date'].strftime('%H:%M:%S')
+        row = [date, time, data['session'], data['pair'], data['buy_sell'], data['time_frame'], data['win_lose'], data['lot_size'], data['closed_pips']]
+        ws.append(row)
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=len(headers)):
+        for cell in row:
+            cell.border = thin_border  # Dodajemy obramowanie dla każdej komórki
+
+    # Auto-szerokość kolumn
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[column_letter].width = max_length + 2
+
+    # Przygotowanie odpowiedzi HTTP z plikiem Excel
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="market_data.xlsx"'
+    
+    # Zapis skoroszytu do odpowiedzi
+    wb.save(response)
     return response

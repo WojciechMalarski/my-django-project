@@ -21,5 +21,5 @@ from myapp import views
 urlpatterns = [
     path('', views.home_view, name='home'),  # Strona główna
     path('add/', views.add_market_data, name='add_market_data'),  # Wprowadzenie danych rynkowych
-    path('export/', views.export_to_csv, name='export_to_csv'),  # Eksport do CSV
+    path('export/', views.export_to_excel, name='export_to_excel'),  # Eksport do CSV
 ]
